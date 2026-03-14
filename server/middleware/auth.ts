@@ -1,3 +1,6 @@
+import { eq } from "drizzle-orm";
+import { db } from "../db";
+import { users } from "../db/schema/user.schema";
 import { getAuthSession } from "../utils/auth";
 
 /*
@@ -15,8 +18,15 @@ export default defineEventHandler(async (event) => {
 
   try {
     const session = await getAuthSession(token);
-    event.context.userId = session?.userId;
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, session?.userId as string))
+      .limit(1);
+
+    event.context.user = user;
   } catch {
-    event.context.userId = null;
+    event.context.user = null;
   }
 });

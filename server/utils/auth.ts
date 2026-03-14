@@ -2,6 +2,7 @@ import { v7 as uuid } from "uuid";
 import { db } from "../db";
 import { sessions } from "../db/schema/auth.schema";
 import { eq } from "drizzle-orm";
+import { H3Event } from "h3";
 
 /*
 create random session token
@@ -30,4 +31,24 @@ export async function getAuthSession(token: string) {
   if (!sessionToken) return null;
 
   return sessionToken;
+}
+
+export function requireRole(event: H3Event, roles: string[]) {
+  const user = event.context.user;
+
+  if (!user) {
+    throw createError({
+      statusCode: 401,
+      message: "Unauthorized",
+    });
+  }
+
+  if (!roles.includes(user.role)) {
+    throw createError({
+      statusCode: 403,
+      message: "Forbidden",
+    });
+  }
+
+  return user;
 }

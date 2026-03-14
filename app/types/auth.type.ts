@@ -1,17 +1,3 @@
-import type { LoginSchema, RegisterSchema } from "~~/shared/schemas/auth";
-
-export interface RegisterFormState {
-  name: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-}
-
-export interface LoginFormState {
-  email: string;
-  password: string;
-}
-
 export interface AuthFormLayoutProps {
   title: string;
   schema: any;
@@ -31,4 +17,11 @@ export interface AuthFormLayoutProps {
 export interface ApiResponse {
   success: boolean;
   message: string;
+}
+
+export interface User {
+  email: string;
+  name: string;
+  isVerified: boolean | null;
+  role: string | null;
 }

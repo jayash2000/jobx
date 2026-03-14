@@ -46,5 +46,29 @@ export const loginSchema = z.object({
   password: z.string().trim().min(1, "Please enter your password"),
 });
 
+export const verifyTokenSchema = z.object({
+  token: z
+    .string()
+    .trim()
+    .min(1, "Token is required")
+    .length(64, "Token must be at least 64 characters long"),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: emailValidation,
+});
+
+export const resetPasswordSchema = z
+  .object({
+    password: passwordValidation,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
 export type RegisterSchema = z.infer<typeof registerSchema>;
 export type LoginSchema = z.infer<typeof loginSchema>;
+export type ForgotPasswordSchema = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordSchema = z.infer<typeof resetPasswordSchema>;

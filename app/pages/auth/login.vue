@@ -17,14 +17,13 @@
 
 <script setup lang="ts">
 import type { FormSubmitEvent } from "@nuxt/ui";
-import type { LoginFormState } from "~/types/auth.type";
 import { loginSchema, type LoginSchema } from "~~/shared/schemas/auth";
 
 definePageMeta({
   layout: "auth",
 });
 
-const state = reactive<LoginFormState>({
+const state = reactive<LoginSchema>({
   email: "",
   password: "",
 });
@@ -34,8 +33,6 @@ const toast = useToast();
 const { reset } = useMyResetForm(state);
 
 const onSubmit = async (event: FormSubmitEvent<LoginSchema>) => {
-  // console.log("Form Data:", event.data);
-
   await authStore.login(event.data);
 
   if (authStore.error) {
@@ -53,7 +50,7 @@ const onSubmit = async (event: FormSubmitEvent<LoginSchema>) => {
 
   toast.add({
     title: "Success!",
-    description: authStore.response.message,
+    description: "Logged in successfully",
     icon: "i-lucide-thumbs-up",
     color: "success",
   });

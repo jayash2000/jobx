@@ -18,14 +18,13 @@
 
 <script setup lang="ts">
 import type { FormSubmitEvent } from "@nuxt/ui";
-import type { RegisterFormState } from "~/types/auth.type";
 import { registerSchema, type RegisterSchema } from "~~/shared/schemas/auth";
 
 definePageMeta({
   layout: "auth",
 });
 
-const state = reactive<RegisterFormState>({
+const state = reactive<RegisterSchema>({
   name: "",
   email: "",
   password: "",
@@ -61,6 +60,6 @@ const onSubmit = async (event: FormSubmitEvent<RegisterSchema>) => {
     color: "success",
   });
 
-  // return navigateTo("/auth/verify");
+  return navigateTo("/auth/login");
 };
 </script>

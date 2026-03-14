@@ -1,10 +1,17 @@
 /*
 Body Content: email, password (validation)
+Request arrives
+Rate limiter checks IP with email
+If too many attempts → block
 Check if user is already logged in
 Verify if email exists in database
 Verify password with database
+Verify if user with that email is verified
 Create session record in database
 Set secure HttpOnly cookie
+Log audit event
+
+ENDPOINT: /api/auth/login (POST)
 */
 
 import { eq } from "drizzle-orm";
@@ -12,6 +19,15 @@ import { db } from "~~/server/db";
 import { users } from "~~/server/db/schema/user.schema";
 import { createAuthSession } from "~~/server/utils/auth";
 import { loginSchema } from "~~/shared/schemas/auth";
+import { RateLimiterMemory } from "rate-limiter-flexible";
+import { auditLogs, sessions } from "~~/server/db/schema/auth.schema";
+
+const limiter = new RateLimiterMemory({
+  // max attempts
+  points: 5,
+  // per 15 minutes
+  duration: 15 * 60,
+});
 
 export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, (body) =>
@@ -33,9 +49,14 @@ export default defineEventHandler(async (event) => {
   if (token) {
     return {
       success: true,
-      message: "Already authenticated!",
+      message: "Already authenticated",
     };
   }
+
+  const ip = getRequestIP(event, { xForwardedFor: true });
+  const key = `${email}-${ip}`;
+
+  await limiter.consume(key);
 
   const [existingUser] = await db
     .select()
@@ -45,8 +66,16 @@ export default defineEventHandler(async (event) => {
 
   if (!existingUser) {
     throw createError({
-      statusCode: 404,
+      statusCode: 401,
       message: "Invalid email or password",
+    });
+  }
+
+  // e.g. 3:10 blocked until 3:40; currently 3:30 i.e. 3:40 > 3:30
+  if (existingUser.lockedUntil && existingUser.lockedUntil > new Date()) {
+    throw createError({
+      statusCode: 403,
+      message: "Account temporarily locked",
     });
   }
 
@@ -56,11 +85,59 @@ export default defineEventHandler(async (event) => {
   );
 
   if (!isPasswordMatching) {
+    let attempts = existingUser.failedAttempts || 0;
+
+    // increase failed attempts for wrong password
+    attempts += 1;
+
+    // lock account for 30 minutes if failed attempt becomes 5 and more
+    if (attempts >= 5) {
+      await db
+        .update(users)
+        .set({
+          failedAttempts: 0,
+          lockedUntil: new Date(Date.now() + 1000 * 60 * 30),
+        })
+        .where(eq(users.email, email));
+
+      throw createError({
+        statusCode: 403,
+        message: "Account locked for 30 minutes",
+      });
+    }
+
+    // if failed attempt less than 5, update failed attempt
+    await db
+      .update(users)
+      .set({
+        failedAttempts: attempts,
+      })
+      .where(eq(users.email, email));
+
     throw createError({
       statusCode: 401,
-      message: "Invalid email or password",
+      message: "Invalid credentials",
     });
   }
+
+  if (!existingUser.isVerified) {
+    throw createError({
+      statusCode: 403,
+      message: "Please verify your email first",
+    });
+  }
+
+  // reset attempts
+  await db
+    .update(users)
+    .set({
+      failedAttempts: 0,
+      lockedUntil: null,
+    })
+    .where(eq(users.email, email));
+
+  // rotate sessions
+  await db.delete(sessions).where(eq(sessions.userId, existingUser.id));
 
   const sessionToken = await createAuthSession(existingUser.id);
 
@@ -68,7 +145,16 @@ export default defineEventHandler(async (event) => {
     httpOnly: true,
     secure: true,
     sameSite: "strict",
+    maxAge: 60 * 60 * 24 * 7,
+    path: "/",
   });
 
-  return { success: true, message: "Login successful!" };
+  // audit log
+  await db.insert(auditLogs).values({
+    userId: existingUser.id,
+    action: "LOGIN_SUCCESS",
+    ip,
+  });
+
+  return { success: true, message: "Login successful" };
 });

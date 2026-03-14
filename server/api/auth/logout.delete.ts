@@ -3,16 +3,16 @@ Check if user is authenticated or not
 Delete cookie
 */
 export default defineEventHandler(async (event) => {
-  const userId = event.context.userId;
+  const user = event.context.user;
 
-  if (!userId) {
+  if (!user) {
     throw createError({
       statusCode: 401,
-      message: "Unauthorized!",
+      message: "Unauthorized",
     });
   }
 
   deleteCookie(event, "session");
 
-  return { success: true, message: "Logged out successfully!" };
+  return { success: true, message: "Logged out successfully" };
 });

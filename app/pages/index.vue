@@ -8,7 +8,7 @@
       variant="outline"
       color="error"
       loading-auto
-      @click="() => onLogout() as Promise<void>"
+      @click="onLogout()"
     >
       Logout
     </UButton>
