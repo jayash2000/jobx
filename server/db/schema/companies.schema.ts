@@ -21,7 +21,7 @@ export const companies = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: varchar("name", { length: 100 }).notNull(),
-    slug: varchar("slug", { length: 150 }).unique().notNull(),
+    slug: varchar("slug", { length: 200 }).unique().notNull(),
     description: text("description").notNull(),
 
     location: varchar("location", { length: 100 }),
