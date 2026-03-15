@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
     .where(eq(verificationTokens.verificationToken, hashedToken))
     .limit(1);
 
-  if (!findToken || findToken.expiresAt < new Date(Date.now())) {
+  if (!findToken || findToken.expiresAt < new Date()) {
     throw createError({
       statusCode: 400,
       message: "Invalid or expired token",

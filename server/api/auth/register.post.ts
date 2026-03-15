@@ -59,11 +59,18 @@ export default defineEventHandler(async (event) => {
     })
     .returning();
 
+  if (!user) {
+    throw createError({
+      statusCode: 500,
+      message: "Failed to create user",
+    });
+  }
+
   const verificationToken = generateToken();
   const hashedToken = hashToken(verificationToken);
 
   await db.insert(verificationTokens).values({
-    userId: user?.id as string,
+    userId: user.id,
     verificationToken: hashedToken,
     // 24 hours expiry date
     expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
