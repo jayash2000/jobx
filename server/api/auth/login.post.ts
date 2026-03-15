@@ -53,10 +53,17 @@ export default defineEventHandler(async (event) => {
     };
   }
 
-  const ip = getRequestIP(event, { xForwardedFor: true });
+  const ip = getRequestIP(event, { xForwardedFor: true }) || "unknown";
   const key = `${email}-${ip}`;
 
-  await limiter.consume(key);
+  try {
+    await limiter.consume(key);
+  } catch (error) {
+    throw createError({
+      statusCode: 429,
+      message: "Too many login attempts. Please try again in 15 minutes.",
+    });
+  }
 
   const [existingUser] = await db
     .select()
@@ -90,19 +97,19 @@ export default defineEventHandler(async (event) => {
     // increase failed attempts for wrong password
     attempts += 1;
 
-    // lock account for 30 minutes if failed attempt becomes 5 and more
+    // lock account for 15 minutes if failed attempt becomes 5 and more
     if (attempts >= 5) {
       await db
         .update(users)
         .set({
           failedAttempts: 0,
-          lockedUntil: new Date(Date.now() + 1000 * 60 * 30),
+          lockedUntil: new Date(Date.now() + 1000 * 60 * 15),
         })
         .where(eq(users.email, email));
 
       throw createError({
         statusCode: 403,
-        message: "Account locked for 30 minutes",
+        message: "Account locked for 15 minutes",
       });
     }
 
