@@ -66,7 +66,7 @@ export const jobs = pgTable(
 
     status: jobStatusEnum("status").default("active").notNull(),
 
-    views: integer("views").default(0),
+    views: integer("views").default(0).notNull(),
 
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
